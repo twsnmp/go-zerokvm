@@ -1,5 +1,7 @@
 # go-zerokvm
 
+[日本語の説明](README_ja.md)
+
 This project is a Go port of the original [ZeroKVM](https://github.com/doominator42/ZeroKVM) by [doominator42](https://github.com/doominator42).
 Go-zerokvm is a low-cost, easy-to-build KVM-over-IP device. It presents itself to the target host as a DisplayLink monitor and a standard USB keyboard/mouse.
 We would like to express our gratitude to doominator42 for their incredible work on the original project.

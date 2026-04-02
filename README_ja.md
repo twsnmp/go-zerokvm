@@ -1,5 +1,7 @@
 # go-zerokvm
 
+[English](README.md)
+
 このプロジェクトは、[doominator42](https://github.com/doominator42)氏によるオリジナルの[ZeroKVM](https://github.com/doominator42/ZeroKVM)をGo言語に移植したものです。
 Go-zerokvmは、低コストで簡単に構築できるKVM-over-IPデバイスです。ターゲットホストからは、DisplayLinkモニタおよび標準的なUSBキーボード/マウスとして認識されます。
 オリジナルのプロジェクトにおけるdoominator42氏の素晴らしい成果に感謝いたします。
