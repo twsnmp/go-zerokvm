@@ -4,6 +4,8 @@ This project is a Go port of the original [ZeroKVM](https://github.com/doominato
 Go-zerokvm is a low-cost, easy-to-build KVM-over-IP device. It presents itself to the target host as a DisplayLink monitor and a standard USB keyboard/mouse.
 We would like to express our gratitude to doominator42 for their incredible work on the original project.
 
+![go-zerokvm](images/go-zerokvm.png)
+
 ## Features
 
 - **DisplayLink Protocol Implementation**: Captures screen signals from the host and displays them in a web browser.
@@ -11,6 +13,10 @@ We would like to express our gratitude to doominator42 for their incredible work
 - **Web Console**: Intuitive remote operation directly from your browser.
 - **Multi-Architecture Support**: Works on ARM-based Linux devices such as Raspberry Pi Zero/2/3/4/5.
 - **No CGO Required**: Pure Go implementation makes cross-compilation extremely easy.
+
+## Screen Shots
+
+![go-zerokvm](images/screenshot.png)
 
 ## Requirements
 
