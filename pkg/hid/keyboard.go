@@ -1,4 +1,7 @@
+// Package hid provides HID (Human Interface Device) descriptors and report structures
+// for keyboard and mouse emulation.
 package hid
+
 
 type KeyboardReport struct {
 	Modifiers byte

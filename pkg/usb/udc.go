@@ -1,4 +1,7 @@
+// Package usb provides high-level control for USB Gadget functions
+// and UDC (USB Device Controller) management.
 package usb
+
 
 import (
 	"os"

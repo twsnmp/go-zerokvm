@@ -1,4 +1,7 @@
+// Package configfs provides an interface for interacting with the Linux
+// USB Gadget ConfigFS to create and configure USB devices.
 package configfs
+
 
 import (
 	"fmt"

@@ -1,4 +1,7 @@
+// Package functionfs provides an interface for interacting with the Linux
+// USB FunctionFS for user-space USB gadget implementations.
 package functionfs
+
 
 import (
 	"encoding/binary"

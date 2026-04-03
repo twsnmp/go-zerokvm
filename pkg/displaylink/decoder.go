@@ -1,4 +1,7 @@
+// Package displaylink handles the decoding of DisplayLink USB protocol
+// and manages the internal framebuffer representation.
 package displaylink
+
 
 import (
 	"encoding/binary"
