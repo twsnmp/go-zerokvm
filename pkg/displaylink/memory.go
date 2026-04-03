@@ -3,9 +3,10 @@ package displaylink
 
 import (
 	"encoding/binary"
-	"log"
 	"sync"
 	"sync/atomic"
+
+	"github.com/twsnmp/go-zerokvm/pkg/logger"
 )
 
 type RgbColorDepth byte
@@ -83,7 +84,7 @@ func (m *Memory) SetRegisterInternal(address byte, value byte) {
 	
 	// Temporary debug: log significant register writes
 	if address >= 0x0f && address <= 0x30 || address == 0xff || address == 0x1f {
-		log.Printf("Register Write: Addr=0x%02x, Val=0x%02x (Total: 0x%x 0x%x 0x%x 0x%x)", 
+		logger.Debugf("Register Write: Addr=0x%02x, Val=0x%02x (Total: 0x%x 0x%x 0x%x 0x%x)", 
 			address, value, m.RAM[Offset+0x20], m.RAM[Offset+0x21], m.RAM[Offset+0x22], m.RAM[Offset+0x23])
 	}
 
@@ -127,11 +128,11 @@ func (m *Memory) applyRegistersInternal() {
 	m.ColorDepth = RgbColorDepth(r[0x00]) // ColorDepth = 0x00
 	newBlank := r[0x1f] != 0
 	if newBlank != m.BlankOutput {
-		log.Printf("Blank state changed: %v -> %v", m.BlankOutput, newBlank)
+		logger.Debugf("Blank state changed: %v -> %v", m.BlankOutput, newBlank)
 		m.BlankOutput = newBlank
 	}
 
-	log.Printf("Registers applied: %dx%d, Depth: %d, FB16 Offset: 0x%x, Stride: %d, Blank: %v",
+	logger.Debugf("Registers applied: %dx%d, Depth: %d, FB16 Offset: 0x%x, Stride: %d, Blank: %v",
 		m.HorizontalResolution, m.VerticalResolution, m.ColorDepth, m.FB16BaseOffset, m.FB16LineStride, m.BlankOutput)
 
 	// Notify server that display parameters have changed

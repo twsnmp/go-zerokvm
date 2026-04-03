@@ -18,6 +18,8 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+
+	"github.com/twsnmp/go-zerokvm/pkg/logger"
 )
 
 //go:embed assets
@@ -27,7 +29,10 @@ func main() {
 	udcName := flag.String("udc", "", "UDC name (e.g. fe980000.usb)")
 	gadgetName := flag.String("name", "zerokvm", "Gadget name")
 	listenAddr := flag.String("listen", ":8080", "Listen address for web UI")
+	debug := flag.Bool("debug", false, "Enable debug/info logging")
 	flag.Parse()
+
+	logger.DebugEnabled = *debug
 
 	if *udcName == "" {
 		log.Fatal("UDC name is required (-udc)")
@@ -56,7 +61,7 @@ func main() {
 		setupDisplayLinkFFS(dlEp0)
 
 		// 3.5 BIND UDC (MUST be after FFS descriptors are written)
-		log.Printf("Binding gadget to UDC %s", *udcName)
+		logger.Debugf("Binding gadget to UDC %s", *udcName)
 		if err := gadget.SetUDC(*udcName); err != nil {
 			log.Fatalf("Failed to bind UDC: %v", err)
 		}
@@ -83,7 +88,7 @@ func main() {
 
 	srv := server.NewServer(mem, http.FS(subFS), kbFile, absFile, relFile)
 	go func() {
-		log.Printf("Starting web server on %s", *listenAddr)
+		logger.Debugf("Starting web server on %s", *listenAddr)
 		if err := srv.Start(*listenAddr); err != nil {
 			log.Fatalf("Web server failed: %v", err)
 		}
@@ -100,7 +105,7 @@ func main() {
 
 		var ep1Cancel context.CancelFunc
 
-		log.Println("Ready to handle EP0 events.")
+		logger.Debugln("Ready to handle EP0 events.")
 		for {
 			ev, err := dlEp0.ReadEvent()
 			if err != nil {
@@ -111,7 +116,7 @@ func main() {
 
 			switch ev.Type {
 			case functionfs.EventEnable:
-				log.Println("USB Event: ENABLE (Host configured the device)")
+				logger.Debugln("USB Event: ENABLE (Host configured the device)")
 				if ep1Cancel != nil {
 					ep1Cancel()
 				}
@@ -120,7 +125,7 @@ func main() {
 				go runReceiverLoop(subCtx, mem)
 
 			case functionfs.EventDisable:
-				log.Println("USB Event: DISABLE (Connection reset by host)")
+				logger.Debugln("USB Event: DISABLE (Connection reset by host)")
 				if ep1Cancel != nil {
 					ep1Cancel()
 					ep1Cancel = nil
@@ -130,9 +135,9 @@ func main() {
 				displaylink.HandleVendorRequest(dlEp0, ev.Setup, mem)
 
 			case functionfs.EventSuspend:
-				log.Println("USB Event: SUSPEND")
+				logger.Debugln("USB Event: SUSPEND")
 			case functionfs.EventResume:
-				log.Println("USB Event: RESUME")
+				logger.Debugln("USB Event: RESUME")
 			}
 		}
 	}()
@@ -141,20 +146,20 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-sigChan
-	log.Printf("Received signal %v, shutting down...", sig)
+	logger.Debugf("Received signal %v, shutting down...", sig)
 
 	// Cancellation of context will stop receiver loops if they check ctx.Done()
 	cancel()
 
 	// Force close endpoints to break any blocking Read() calls
 	if dlEp0 != nil {
-		log.Println("Closing EP0...")
+		logger.Debugln("Closing EP0...")
 		dlEp0.Close()
 	}
 
-	log.Println("Unbinding UDC...")
+	logger.Debugln("Unbinding UDC...")
 	gadget.SetUDC("") // Unbind UDC
-	log.Println("Clean shutdown complete.")
+	logger.Debugln("Clean shutdown complete.")
 }
 
 func runReceiverLoop(ctx context.Context, mem *displaylink.Memory) {
@@ -169,15 +174,15 @@ func runReceiverLoop(ctx context.Context, mem *displaylink.Memory) {
 	buf := make([]byte, 32768)
 
 	var bulkReadCount uint64
-	log.Println("DisplayLink receiver loop started.")
+	logger.Debugln("DisplayLink receiver loop started.")
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Receiver loop stopped by context.")
+			logger.Debugln("Receiver loop stopped by context.")
 			return
 		default:
 			if atomic.LoadUint64(&bulkReadCount)%1000 == 0 {
-				log.Printf("Waiting for EP1 OUT data... (Total Packets: %d)", bulkReadCount)
+				logger.Debugf("Waiting for EP1 OUT data... (Total Packets: %d)", bulkReadCount)
 			}
 			n, err := ep1.Read(buf)
 			if err != nil {
@@ -185,12 +190,12 @@ func runReceiverLoop(ctx context.Context, mem *displaylink.Memory) {
 				return
 			}
 			if n > 0 && atomic.LoadUint64(&bulkReadCount)%100 == 0 {
-				log.Printf("Bulk Read EP1: %d bytes (Packet #%d)", n, bulkReadCount)
+				logger.Debugf("Bulk Read EP1: %d bytes (Packet #%d)", n, bulkReadCount)
 			}
 
 			if n > 0 {
 				if atomic.AddUint64(&bulkReadCount, 1)%100 == 0 {
-					log.Printf("Bulk Read EP1: %d bytes (Total reads: %d)", n, bulkReadCount)
+					logger.Debugf("Bulk Read EP1: %d bytes (Total reads: %d)", n, bulkReadCount)
 				}
 				if err := decoder.Decode(buf[:n]); err != nil {
 					log.Printf("Decode error: %v", err)
@@ -306,7 +311,7 @@ func setupDisplayLinkFFS(ep0 *functionfs.Ep0) {
 		{0x07, 0x05, 0x01, 0x02, 0x00, 0x02, 0x00},                       // EP1 OUT Bulk (512)
 	}
 
-	log.Println("Writing standard descriptors to EP0...")
+	logger.Debugln("Writing standard descriptors to EP0...")
 	if err := ep0.WriteDescriptors(fs, hs, nil); err != nil {
 		log.Printf("Error: Critical failure writing standard descriptors: %v", err)
 		return

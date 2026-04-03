@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"log"
 	"sync/atomic"
+
+	"github.com/twsnmp/go-zerokvm/pkg/logger"
 )
 
 const CommandHeader = 0xaf
@@ -123,10 +125,10 @@ func Process(commandStream []byte, memory *Memory) (int, bool) {
 			}
 			dirty = true
 		case CmdSetRegister:
-			log.Printf("Set Register command at offset %d", offset)
+			logger.Debugf("Set Register command at offset %d", offset)
 			cmdLen = processSetRegister(cmdData, memory)
 		case CmdLoadDecompTable:
-			log.Printf("Load Decompression Table at offset %d", offset)
+			logger.Debugf("Load Decompression Table at offset %d", offset)
 			cmdLen = processLoadDecompTable(cmdData, memory)
 		case CmdFlushPipe, CmdTrailingDoubleZero:
 			offset += 2

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/twsnmp/go-zerokvm/pkg/displaylink"
+	"github.com/twsnmp/go-zerokvm/pkg/logger"
 )
 
 // Server handles MJPEG streaming and HID (keyboard/mouse) event processing.
@@ -186,7 +187,7 @@ func (s *Server) handlePointer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if atomic.AddUint32(&s.captureCounter, 1)%10 == 0 { // reuse counter for rate limiting
-		log.Printf("Pointer Request: Type=%s, Events=%d, absWriter=%v", req.Type, len(req.Events), s.absWriter != nil)
+		logger.Debugf("Pointer Request: Type=%s, Events=%d, absWriter=%v", req.Type, len(req.Events), s.absWriter != nil)
 	}
 
 	for _, ev := range req.Events {
@@ -231,7 +232,7 @@ func (s *Server) handlePointer(w http.ResponseWriter, r *http.Request) {
 				case s.mouseChan <- report:
 				default:
 				}
-				log.Printf("HID BootMouse Q: dX=%d, dY=%d", dx, dy)
+				logger.Debugf("HID BootMouse Q: dX=%d, dY=%d", dx, dy)
 			}
 		case "AbsoluteMouse":
 			if s.absWriter != nil {
@@ -255,7 +256,7 @@ func (s *Server) handlePointer(w http.ResponseWriter, r *http.Request) {
 				default:
 					// Buffer full, drop event to keep server responsive
 				}
-				log.Printf("HID AbsMouse Queue: X=%v, Y=%v, Buttons=%02x", *ev.X, *ev.Y, s.mouseBtnState)
+				logger.Debugf("HID AbsMouse Queue: X=%v, Y=%v, Buttons=%02x", *ev.X, *ev.Y, s.mouseBtnState)
 			}
 		}
 	}
@@ -324,7 +325,7 @@ func (s *Server) handleKeyboard(w http.ResponseWriter, r *http.Request) {
 	default:
 	}
 
-	log.Printf("HID Keyboard Q: Mod=%02x, Keys=%v", modifiers, s.keyState)
+	logger.Debugf("HID Keyboard Q: Mod=%02x, Keys=%v", modifiers, s.keyState)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -424,7 +425,7 @@ func (s *Server) handleRects(w http.ResponseWriter, r *http.Request) {
 		activeBuffer := (uint32(s.memory.ActiveOffset) / 0x2c0000) * 0x2c0000
 
 		// Monitor stream health
-		log.Printf("Sent MJPEG+Rect frame: %dx%d, RegOffset: 0x%x, ActiveOff: 0x%x, ActiveBuf: 0x%x, Size: %d",
+		logger.Debugf("Sent MJPEG+Rect frame: %dx%d, RegOffset: 0x%x, ActiveOff: 0x%x, ActiveBuf: 0x%x, Size: %d",
 			img.Bounds().Dx(), img.Bounds().Dy(), s.memory.FB16BaseOffset, s.memory.ActiveOffset, activeBuffer, len(jpegData))
 	}
 }

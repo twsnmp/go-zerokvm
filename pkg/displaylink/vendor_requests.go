@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"log"
 
+	"github.com/twsnmp/go-zerokvm/pkg/logger"
 	"github.com/twsnmp/go-zerokvm/pkg/usb/functionfs"
 )
 
@@ -41,12 +42,12 @@ func init() {
 
 // HandleVendorRequest processes DisplayLink-specific control requests on ep0.
 func HandleVendorRequest(ep0 *functionfs.Ep0, request functionfs.UsbCtrlRequest, mem *Memory) {
-	log.Printf("Setup Request: Type=0x%02x, Req=0x%02x, Val=0x%04x, Idx=0x%04x, Len=%d",
+	logger.Debugf("Setup Request: Type=0x%02x, Req=0x%02x, Val=0x%04x, Idx=0x%04x, Len=%d",
 		request.RequestType, request.Request, request.Value, request.Index, request.Length)
 
 	// GET_DESCRIPTOR 0x5f
 	if request.RequestType == 0x80 && request.Request == 0x06 && (request.Value>>8) == 0x5f {
-		log.Println("Handling GET_DESCRIPTOR 0x5f (1024x768)")
+		logger.Debugln("Handling GET_DESCRIPTOR 0x5f (1024x768)")
 		vDesc := NewVendorDescriptor(1024, 768, 1024*768)
 		ep0.Write(vDesc.Bytes())
 		return
@@ -68,7 +69,7 @@ func HandleVendorRequest(ep0 *functionfs.Ep0, request functionfs.UsbCtrlRequest,
 					copy(resp[1:], defaultEdid[int(offset):int(offset)+int(request.Length)-1])
 				}
 			}
-			log.Printf("EDID Read [0x%04x]: status=%d, len=%d, data[:4]=%x", offset, resp[0], request.Length, resp[:min(4, len(resp))])
+			logger.Debugf("EDID Read [0x%04x]: status=%d, len=%d, data[:4]=%x", offset, resp[0], request.Length, resp[:min(4, len(resp))])
 			ep0.Write(resp)
 
 		case RequestReadRAM:
@@ -84,7 +85,7 @@ func HandleVendorRequest(ep0 *functionfs.Ep0, request functionfs.UsbCtrlRequest,
 				copy(data, mem.RAM[offset:offset+int(request.Length)])
 			}
 			mem.Mu.Unlock()
-			log.Printf("RAM Read [0x%04x]: val=%x, len=%d", offset, data, request.Length)
+			logger.Debugf("RAM Read [0x%04x]: val=%x, len=%d", offset, data, request.Length)
 			ep0.Write(data)
 
 		case RequestVerifyChecksum:
@@ -100,7 +101,7 @@ func HandleVendorRequest(ep0 *functionfs.Ep0, request functionfs.UsbCtrlRequest,
 			// 0xF0005000 is perfectly acceptable to macOS and avoids 5s reset loops
 			// Bit 1 or Bit 0 (0x3) often signals "Monitor attached, poll interrupt EP"
 			// Windows 11 also accepts 0xF0005000 when no vendor descriptor is used.
-			log.Println("Get device flags: 0xF0005000")
+			logger.Debugln("Get device flags: 0xF0005000")
 			binary.LittleEndian.PutUint32(resp, 0xF0005000)
 			ep0.Write(resp)
 
@@ -125,18 +126,18 @@ func HandleVendorRequest(ep0 *functionfs.Ep0, request functionfs.UsbCtrlRequest,
 					}
 				}
 				mem.Mu.Unlock()
-				log.Printf("RAM Write [0x%04x]: val=%x, len=%d", offset, data, request.Length)
+				logger.Debugf("RAM Write [0x%04x]: val=%x, len=%d", offset, data, request.Length)
 			}
 		case RequestSetEncryption:
 			data := make([]byte, request.Length)
 			if err := ep0.ReadExactly(data); err == nil {
-				log.Printf("Received Encryption Key: %x", data)
+				logger.Debugf("Received Encryption Key: %x", data)
 			}
 		case 0x14: // Pulse/Keepalive
 			data := make([]byte, request.Length)
 			if err := ep0.ReadExactly(data); err != nil {
 				// Don't treat interrupted system call (EINTR) as a fatal error
-				log.Printf("EP0 OUT 0x14 result: %v", err)
+				logger.Debugf("EP0 OUT 0x14 result: %v", err)
 			}
 		default:
 			log.Printf("Unknown Vendor OUT request: 0x%02x (Len=%d)", request.Request, request.Length)
