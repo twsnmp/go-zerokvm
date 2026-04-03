@@ -30,41 +30,50 @@ func main() {
 	gadgetName := flag.String("name", "zerokvm", "Gadget name")
 	listenAddr := flag.String("listen", ":8080", "Listen address for web UI")
 	debug := flag.Bool("debug", false, "Enable debug/info logging")
+	mock := flag.Bool("mock", false, "Enable mock mode (no hardware required)")
 	flag.Parse()
 
 	logger.DebugEnabled = *debug
 
-	if *udcName == "" {
-		log.Fatal("UDC name is required (-udc)")
+	if !*mock && *udcName == "" {
+		log.Fatal("UDC name is required (-udc) unless -mock is used")
 	}
 
 	// 1. Initialize Memory
 	mem := displaylink.NewMemory()
 
-	// 2. Configure USB Gadget via ConfigFS
-	gadget := configfs.NewGadget(*gadgetName)
-	if err := setupGadget(gadget); err != nil {
-		log.Fatalf("Failed to setup gadget: %v", err)
-	}
-	defer gadget.Delete()
+	var dlEp0 *functionfs.Ep0
+	var gadget *configfs.Gadget
 
-	// 3. Initialize FunctionFS for DisplayLink
-	if err := functionfs.Mount("dl", "/dev/dl"); err != nil {
-		log.Printf("Warning: Failed to mount FunctionFS 'dl' to /dev/dl: %v", err)
-	}
-
-	dlEp0, err := functionfs.NewEp0("/dev/dl")
-	if err != nil {
-		log.Printf("Warning: Failed to open /dev/dl/ep0: %v. Are you running as root?", err)
-	} else {
-		defer dlEp0.Close()
-		setupDisplayLinkFFS(dlEp0)
-
-		// 3.5 BIND UDC (MUST be after FFS descriptors are written)
-		logger.Debugf("Binding gadget to UDC %s", *udcName)
-		if err := gadget.SetUDC(*udcName); err != nil {
-			log.Fatalf("Failed to bind UDC: %v", err)
+	if !*mock {
+		// 2. Configure USB Gadget via ConfigFS
+		gadget = configfs.NewGadget(*gadgetName)
+		if err := setupGadget(gadget); err != nil {
+			log.Fatalf("Failed to setup gadget: %v", err)
 		}
+		defer gadget.Delete()
+
+		// 3. Initialize FunctionFS for DisplayLink
+		if err := functionfs.Mount("dl", "/dev/dl"); err != nil {
+			log.Printf("Warning: Failed to mount FunctionFS 'dl' to /dev/dl: %v", err)
+		}
+
+		var err error
+		dlEp0, err = functionfs.NewEp0("/dev/dl")
+		if err != nil {
+			log.Printf("Warning: Failed to open /dev/dl/ep0: %v. Are you running as root?", err)
+		} else {
+			defer dlEp0.Close()
+			setupDisplayLinkFFS(dlEp0)
+
+			// 3.5 BIND UDC (MUST be after FFS descriptors are written)
+			logger.Debugf("Binding gadget to UDC %s", *udcName)
+			if err := gadget.SetUDC(*udcName); err != nil {
+				log.Fatalf("Failed to bind UDC: %v", err)
+			}
+		}
+	} else {
+		logger.Debugln("Running in MOCK mode. No hardware will be initialized.")
 	}
 
 	// 4. Start Web Server
@@ -157,8 +166,10 @@ func main() {
 		dlEp0.Close()
 	}
 
-	logger.Debugln("Unbinding UDC...")
-	gadget.SetUDC("") // Unbind UDC
+	if gadget != nil {
+		logger.Debugln("Unbinding UDC...")
+		gadget.SetUDC("") // Unbind UDC
+	}
 	logger.Debugln("Clean shutdown complete.")
 }
 

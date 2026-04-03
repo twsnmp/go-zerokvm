@@ -89,5 +89,30 @@ ls /sys/class/udc
 3. **Usage**:
    Connect the ZeroKVM device's USB OTG port to the host PC's USB port, and access `http://<device-ip>:8080` in your web browser.
 
+## Testing
+
+### Unit Tests
+To run the internal logic tests (DisplayLink decoding, HID protocol, etc.):
+```bash
+go test ./...
+```
+
+### E2E Web UI Testing (Maestro)
+We use [Maestro](https://maestro.mobile.dev/) for end-to-end testing of the web interface.
+
+1. **Start the Mock Server**:
+   You can run the application in "mock" mode on any OS (including macOS/Windows) to test the UI without real hardware:
+   ```bash
+   go run main.go -mock -listen :8081
+   ```
+
+2. **Run Maestro**:
+   ```bash
+   # Smoke test
+   maestro test e2e/viewer_smoke_test.yaml
+   # Interaction test
+   maestro test e2e/toolbar_interactions.yaml
+   ```
+
 ## License
 This project is licensed under the [Apache License 2.0](LICENSE).

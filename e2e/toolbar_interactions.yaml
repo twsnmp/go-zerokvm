@@ -1,0 +1,21 @@
+url: http://localhost:8081/kvm/viewer.html
+---
+- launchApp
+- assertVisible:
+    id: "showToolbarButton"
+- tapOn:
+    id: "showToolbarButton"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "fitScreenCheckbox"
+- tapOn:
+    id: "fitScreenCheckbox"
+- tapOn:
+    id: "pointerEnabledCheckbox"
+- tapOn:
+    id: "keyboardEnabledCheckbox"
+- tapOn:
+    id: "showToolbarButton"
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: "fitScreenCheckbox"

@@ -89,5 +89,30 @@ ls /sys/class/udc
 3. **使用方法**:
    ZeroKVMデバイスのUSB OTGポートをホストPCのUSBポートに接続し、ウェブブラウザで `http://<device-ip>:8080` にアクセスします。
 
+## テスト
+
+### ユニットテスト
+内部ロジック（DisplayLinkデコード、HIDプロトコルなど）のテストを実行します：
+```bash
+go test ./...
+```
+
+### E2E Web UIテスト (Maestro)
+Webインターフェースのエンドツーエンドテストには [Maestro](https://maestro.mobile.dev/) を使用します。
+
+1. **モックサーバーの起動**:
+   ハードウェアがない環境（macOS/Windows等）でも、`-mock` フラグを使用してUIのみを起動しテストできます：
+   ```bash
+   go run main.go -mock -listen :8081
+   ```
+
+2. **Maestroの実行**:
+   ```bash
+   # 基本的な表示テスト
+   maestro test e2e/viewer_smoke_test.yaml
+   # 操作インタラクションテスト
+   maestro test e2e/toolbar_interactions.yaml
+   ```
+
 ## ライセンス
 このプロジェクトは [Apache License 2.0](LICENSE) の下でライセンスされています。
