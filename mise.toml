@@ -1,6 +1,10 @@
 [tools]
 go = "1.25"
 
+[tasks.test]
+description = "Run unit tests"
+run = "go test -v ./..."
+
 [tasks."build:arm:nocgo"]
 description = "Build for ARM 32-bit without CGO"
 run = "go build -o dist/go-zerokvm-arm-nocgo"

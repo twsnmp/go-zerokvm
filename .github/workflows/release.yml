@@ -23,6 +23,9 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@v2
 
+      - name: Run Tests
+        run: mise run test
+
       - name: Build all variants
         run: mise run build:all
 
