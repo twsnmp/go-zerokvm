@@ -8,11 +8,11 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
-	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,9 +26,9 @@ type Server struct {
 	memory         *displaylink.Memory
 	assets         http.FileSystem
 	mu             sync.Mutex
-	kbFile         *os.File
-	relFile        *os.File
-	absFile        *os.File
+	kbWriter       io.Writer
+	relWriter      io.Writer
+	absWriter      io.Writer
 
 	keyState      []uint16
 	keyStateMutex sync.Mutex
@@ -40,12 +40,12 @@ type Server struct {
 	absMouseChan chan []byte
 }
 
-func (s *Server) startHidWorker(file *os.File, ch chan []byte, name string) {
+func (s *Server) startHidWorker(writer io.Writer, ch chan []byte, name string) {
 	for report := range ch {
-		if file == nil {
+		if writer == nil {
 			continue
 		}
-		_, err := file.Write(report)
+		_, err := writer.Write(report)
 		if err != nil {
 			log.Printf("HID %s write failed: %v", name, err)
 		}
@@ -53,7 +53,7 @@ func (s *Server) startHidWorker(file *os.File, ch chan []byte, name string) {
 }
 
 // NewServer initializes a new Server with shared memory and assets.
-func NewServer(memory *displaylink.Memory, assets http.FileSystem) *Server {
+func NewServer(memory *displaylink.Memory, assets http.FileSystem, kbWriter, absWriter, relWriter io.Writer) *Server {
 	s := &Server{
 		memory:       memory,
 		assets:       assets,
@@ -61,27 +61,15 @@ func NewServer(memory *displaylink.Memory, assets http.FileSystem) *Server {
 		kbChan:       make(chan []byte, 100),
 		mouseChan:    make(chan []byte, 100),
 		absMouseChan: make(chan []byte, 100),
-	}
-
-	// Open HID gadgets
-	var err error
-	s.kbFile, err = os.OpenFile("/dev/hidg0", os.O_WRONLY, 0666)
-	if err != nil {
-		log.Printf("Warning: Failed to open /dev/hidg0 (keyboard): %v", err)
-	}
-	s.absFile, err = os.OpenFile("/dev/hidg1", os.O_WRONLY, 0666)
-	if err != nil {
-		log.Printf("Warning: Failed to open /dev/hidg1 (abs mouse): %v", err)
-	}
-	s.relFile, err = os.OpenFile("/dev/hidg2", os.O_WRONLY, 0666)
-	if err != nil {
-		log.Printf("Warning: Failed to open /dev/hidg2 (rel mouse): %v", err)
+		kbWriter:     kbWriter,
+		relWriter:    relWriter,
+		absWriter:    absWriter,
 	}
 
 	// Start HID workers
-	go s.startHidWorker(s.kbFile, s.kbChan, "Keyboard")
-	go s.startHidWorker(s.absFile, s.absMouseChan, "AbsMouse")
-	go s.startHidWorker(s.relFile, s.mouseChan, "RelMouse")
+	go s.startHidWorker(s.kbWriter, s.kbChan, "Keyboard")
+	go s.startHidWorker(s.absWriter, s.absMouseChan, "AbsMouse")
+	go s.startHidWorker(s.relWriter, s.mouseChan, "RelMouse")
 
 	return s
 }
@@ -198,7 +186,7 @@ func (s *Server) handlePointer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if atomic.AddUint32(&s.captureCounter, 1)%10 == 0 { // reuse counter for rate limiting
-		log.Printf("Pointer Request: Type=%s, Events=%d, absFile=%v", req.Type, len(req.Events), s.absFile != nil)
+		log.Printf("Pointer Request: Type=%s, Events=%d, absWriter=%v", req.Type, len(req.Events), s.absWriter != nil)
 	}
 
 	for _, ev := range req.Events {
@@ -226,7 +214,7 @@ func (s *Server) handlePointer(w http.ResponseWriter, r *http.Request) {
 
 		switch req.Type {
 		case "BootMouse":
-			if s.relFile != nil {
+			if s.relWriter != nil {
 				var dx, dy, dw int8
 				if ev.X != nil {
 					dx = int8(*ev.X)
@@ -246,7 +234,7 @@ func (s *Server) handlePointer(w http.ResponseWriter, r *http.Request) {
 				log.Printf("HID BootMouse Q: dX=%d, dY=%d", dx, dy)
 			}
 		case "AbsoluteMouse":
-			if s.absFile != nil {
+			if s.absWriter != nil {
 				// Report ID: 1, Buttons, X (LE), Y (LE)
 				report := make([]byte, 6)
 				report[0] = 0x01
@@ -281,7 +269,7 @@ func (s *Server) handleKeyboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.kbFile == nil {
+	if s.kbWriter == nil {
 		w.WriteHeader(http.StatusOK)
 		return
 	}

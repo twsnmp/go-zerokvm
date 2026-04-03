@@ -67,7 +67,21 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create sub FS: %v", err)
 	}
-	srv := server.NewServer(mem, http.FS(subFS))
+	// 3.8 Open HID gadgets
+	kbFile, err := os.OpenFile("/dev/hidg0", os.O_WRONLY, 0666)
+	if err != nil {
+		log.Printf("Warning: Failed to open /dev/hidg0 (keyboard): %v", err)
+	}
+	absFile, err := os.OpenFile("/dev/hidg1", os.O_WRONLY, 0666)
+	if err != nil {
+		log.Printf("Warning: Failed to open /dev/hidg1 (abs mouse): %v", err)
+	}
+	relFile, err := os.OpenFile("/dev/hidg2", os.O_WRONLY, 0666)
+	if err != nil {
+		log.Printf("Warning: Failed to open /dev/hidg2 (rel mouse): %v", err)
+	}
+
+	srv := server.NewServer(mem, http.FS(subFS), kbFile, absFile, relFile)
 	go func() {
 		log.Printf("Starting web server on %s", *listenAddr)
 		if err := srv.Start(*listenAddr); err != nil {
