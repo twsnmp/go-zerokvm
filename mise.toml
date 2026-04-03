@@ -7,22 +7,22 @@ run = "go test -v ./..."
 
 [tasks."build:arm:nocgo"]
 description = "Build for ARM 32-bit without CGO"
-run = "go build -o dist/go-zerokvm-arm-nocgo"
+run = "go build -ldflags \"-X main.version=${VERSION:-$(git describe --tags --always)} -X main.commit=${COMMIT:-$(git rev-parse --short HEAD)}\" -o dist/go-zerokvm-arm-nocgo"
 env = { GOOS = "linux", GOARCH = "arm", GOARM = "7", CGO_ENABLED = "0" }
 
 [tasks."build:arm:cgo"]
 description = "Build for ARM 32-bit with CGO"
-run = "go build -o dist/go-zerokvm-arm-cgo"
+run = "go build -ldflags \"-X main.version=${VERSION:-$(git describe --tags --always)} -X main.commit=${COMMIT:-$(git rev-parse --short HEAD)}\" -o dist/go-zerokvm-arm-cgo"
 env = { GOOS = "linux", GOARCH = "arm", GOARM = "7", CGO_ENABLED = "1", CC = "arm-linux-gnueabihf-gcc" }
 
 [tasks."build:arm64:nocgo"]
 description = "Build for ARM 64-bit without CGO"
-run = "go build -o dist/go-zerokvm-arm64-nocgo"
+run = "go build -ldflags \"-X main.version=${VERSION:-$(git describe --tags --always)} -X main.commit=${COMMIT:-$(git rev-parse --short HEAD)}\" -o dist/go-zerokvm-arm64-nocgo"
 env = { GOOS = "linux", GOARCH = "arm64", CGO_ENABLED = "0" }
 
 [tasks."build:arm64:cgo"]
 description = "Build for ARM 64-bit with CGO"
-run = "go build -o dist/go-zerokvm-arm64-cgo"
+run = "go build -ldflags \"-X main.version=${VERSION:-$(git describe --tags --always)} -X main.commit=${COMMIT:-$(git rev-parse --short HEAD)}\" -o dist/go-zerokvm-arm64-cgo"
 env = { GOOS = "linux", GOARCH = "arm64", CGO_ENABLED = "1", CC = "aarch64-linux-gnu-gcc" }
 
 [tasks."build:all"]
@@ -33,3 +33,7 @@ depends = [
     "build:arm64:nocgo",
     "build:arm64:cgo",
 ]
+
+[tasks."build:local"]
+description = "Build for local OS/Arch"
+run = "go build -ldflags \"-X main.version=${VERSION:-$(git describe --tags --always)} -X main.commit=${COMMIT:-$(git rev-parse --short HEAD)}\" -o dist/go-zerokvm"

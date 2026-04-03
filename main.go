@@ -11,13 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	"embed"
+	"io/fs"
+	"net/http"
+
 	"github.com/twsnmp/go-zerokvm/pkg/displaylink"
 	"github.com/twsnmp/go-zerokvm/pkg/server"
 	"github.com/twsnmp/go-zerokvm/pkg/usb/configfs"
 	"github.com/twsnmp/go-zerokvm/pkg/usb/functionfs"
-	"embed"
-	"io/fs"
-	"net/http"
 
 	"github.com/twsnmp/go-zerokvm/pkg/logger"
 )
@@ -25,20 +26,29 @@ import (
 //go:embed assets
 var assets embed.FS
 
+var version = "vx.x.x"
+var commit = ""
+
 func main() {
 	udcName := flag.String("udc", "", "UDC name (e.g. fe980000.usb)")
 	gadgetName := flag.String("name", "zerokvm", "Gadget name")
 	listenAddr := flag.String("listen", ":8080", "Listen address for web UI")
 	debug := flag.Bool("debug", false, "Enable debug/info logging")
 	mock := flag.Bool("mock", false, "Enable mock mode (no hardware required)")
+	showVersion := flag.Bool("v", false, "Show version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("go-zerokvm version: %s, commit: %s\n", version, commit)
+		return
+	}
 
 	logger.DebugEnabled = *debug
 
 	if !*mock && *udcName == "" {
 		log.Fatal("UDC name is required (-udc) unless -mock is used")
 	}
-
+	log.Printf("start go-zerokvm %s(%s)", version, commit)
 	// 1. Initialize Memory
 	mem := displaylink.NewMemory()
 
@@ -171,6 +181,7 @@ func main() {
 		gadget.SetUDC("") // Unbind UDC
 	}
 	logger.Debugln("Clean shutdown complete.")
+	log.Printf("go-zerokvm %s(%s) shutdown complete.", version, commit)
 }
 
 func runReceiverLoop(ctx context.Context, mem *displaylink.Memory) {
