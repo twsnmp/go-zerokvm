@@ -507,6 +507,20 @@ func processWriteRlx16(data []byte, memory *Memory) int {
 			address += 2
 		}
 		total -= chunk
+
+		if total > 0 {
+			if offset+1 > len(data) { return 0 }
+			repeat := int(data[offset])
+			offset++
+			if repeat > 0 {
+				last := binary.BigEndian.Uint16(data[offset-3:offset-1])
+				for i := 0; i < repeat; i++ {
+					binary.LittleEndian.PutUint16(fb[(address) & (FBPhysSize-1) : (address) & (FBPhysSize-1)+2], last)
+					address += 2
+				}
+				total -= repeat
+			}
+		}
 	}
 	return offset
 }
